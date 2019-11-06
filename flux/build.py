@@ -308,8 +308,15 @@ def do_build_(build, build_path, override_path, logger, logfile, terminate_event
   # Execute the script.
   logger.info('[Flux]: executing {}'.format(os.path.basename(script_fn)))
   logger.info('$ ' + shlex.quote(script_fn))
+  build_env = os.environ.copy()
+  build_env.update({
+      'BUILD_NUM': str(build.num),
+      'BRANCH': build.ref.replace('refs/heads/', '', 1).replace('refs/tags/', '', 1),
+      'SHA1': build.commit_sha,
+      })
   popen = subprocess.Popen([script_fn], cwd=build_path,
-    stdout=logfile, stderr=subprocess.STDOUT, stdin=None)
+    stdout=logfile, stderr=subprocess.STDOUT, stdin=None,
+    env=build_env)
 
   # Wait until the process finished or the terminate event is set.
   while popen.poll() is None and not terminate_event.is_set():
