@@ -14,6 +14,8 @@ import datetime
 import hashlib
 import os
 import pony.orm as orm
+import posixpath
+import requests
 import shutil
 import uuid
 
@@ -194,6 +196,9 @@ class Build(db.Entity):
   date_started = orm.Optional(datetime.datetime)
   date_finished = orm.Optional(datetime.datetime)
 
+  def before_update(self):
+      update_github_status(self)
+
   def __init__(self, **kwargs):
     # Backwards compatibility for when SQLAlchemy was used, Auto Increment
     # was not enabled there.
@@ -287,3 +292,52 @@ def get_target_for(path):
 
 
 db.generate_mapping(create_tables=True)
+
+GITHUB_STATUSES = {
+  Build.Status_Error: {
+    'status': 'failure',
+    'description': 'The build did not complete successfully.',
+  },
+  Build.Status_Stopped: {
+    'status': 'error',
+    'description': 'The build was stopped before completion.',
+  },
+  Build.Status_Success: {
+    'status': 'success',
+    'description': 'The build completed successfully!',
+  },
+  Build.Status_Building: {
+    'status': 'pending',
+    'description': 'The build is running.',
+  },
+}
+
+def update_github_status(build):
+    app.logger.debug('Checking if GitHub status update is needed')
+    if 'github.com' in build.repo.clone_url:
+      if os.environ.get('GITHUB_TOKEN') and build.status in GITHUB_STATUSES:
+        app.logger.debug('Updating status for: {}'.format(build.repo.name))
+        with app.app_context():
+          try:
+            resp = requests.post(
+              posixpath.join(
+                'https://api.github.com/repos',
+                build.repo.name,
+                'statuses',
+                build.commit_sha),
+              json={
+                "state": GITHUB_STATUSES[build.status]['status'],
+                "target_url": url_for('view_build', path=posixpath.join(build.repo.name, str(build.num)), _external=True),
+                "description": GITHUB_STATUSES[build.status]['description'],
+                "context": "ci/flux",
+              },
+              headers={
+                "Authorization": "token {}".format(os.environ['GITHUB_TOKEN']),
+              }
+            )
+            if resp.status_code > 299:
+                app.logger.debug('GitHub returned: {} - {}'.format(resp.status_code, resp.content))
+            else:
+                app.logger.debug('Updated status successfully')
+          except requests.exceptions.RequestException as exc:
+            app.logger.info(exc)
