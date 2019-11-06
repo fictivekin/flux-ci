@@ -29,6 +29,7 @@ import json
 import os
 import uuid
 
+API_CONTENTFUL = 'contentful'
 API_GOGS = 'gogs'
 API_GITHUB = 'github'
 API_GITEA = 'gitea'
@@ -155,6 +156,15 @@ def hook_push(logger):
     commit = utils.get(data, 'checkout_sha', str)
     secret = request.headers.get('X-Gitlab-Token')
     get_repo_secret = lambda r: r.secret
+
+  elif api == API_CONTENTFUL:
+    owner = request.headers.get('X-Contentful-Owner')
+    name = request.headers.get('X-Contentful-Repo')
+    ref = 'ref/heads/{}'.format(request.headers.get('X-Contentful-Branch'))
+    commit = '0' * 32  # A dummy commit, since Contentful can't know which hash is current
+    secret = request.headers.get('X-Contentful-Token')
+    get_repo_secret = lambda r: r.secret
+
   elif api == API_BARE:
     owner = utils.get(data, 'owner', str)
     name = utils.get(data, 'name', str)
