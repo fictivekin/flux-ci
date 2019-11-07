@@ -36,7 +36,7 @@ import zipfile
 
 from . import app, config, models
 from urllib.parse import urlparse
-from flask import request, session, redirect, url_for, Response
+from flask import request, session, redirect, url_for, Response, request, abort
 from datetime import datetime
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -149,6 +149,29 @@ def with_io_response(kwarg="stream", stream_type="text", **response_kwargs):
             kwargs[kwarg] = stream = factory()
             status = func(*args, **kwargs)
             return Response(stream.getvalue(), status=status, **response_kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def with_req_data():
+    """ Decorator that passes the request body content """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                # XXX Determine encoding from Request Headers, if possible.
+                data = json.loads(request.data.decode("utf8"))
+                try:
+                    return func(data, *args, **kwargs)
+                except BaseException as exc:
+                    logger.exception(exc)
+                    abort(500)
+            except (UnicodeDecodeError, ValueError) as exc:
+                logger.error("Invalid JSON data received: {}".format(exc))
+                abort(400)
 
         return wrapper
 
