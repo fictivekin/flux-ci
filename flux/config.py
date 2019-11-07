@@ -29,28 +29,29 @@ loaded = False
 
 
 def load(filename=None):
-  global loaded
-  if filename is None:
-    filename = os.getenv('FLUX_CONFIG', 'flux_config.py')
-  filename = os.path.expanduser(filename)
-  if not os.path.isabs(filename):
-    for path in [os.getenv('FLUX_ROOT'), '.', 'data']:
-      if not path: continue
-      if os.path.isfile(os.path.join(path, filename)):
-        filename = os.path.join(path, filename)
-        break
-  filename = os.path.normpath(os.path.abspath(filename))
-  with open(filename) as fp:
-    scope = {'__file__': filename}
-    exec(compile(fp.read(), filename, 'exec'), scope)
-    del scope['__file__']
-    globals().update(scope)
-  loaded = True
+    global loaded
+    if filename is None:
+        filename = os.getenv("FLUX_CONFIG", "flux_config.py")
+    filename = os.path.expanduser(filename)
+    if not os.path.isabs(filename):
+        for path in [os.getenv("FLUX_ROOT"), ".", "data"]:
+            if not path:
+                continue
+            if os.path.isfile(os.path.join(path, filename)):
+                filename = os.path.join(path, filename)
+                break
+    filename = os.path.normpath(os.path.abspath(filename))
+    with open(filename) as fp:
+        scope = {"__file__": filename}
+        exec(compile(fp.read(), filename, "exec"), scope)
+        del scope["__file__"]
+        globals().update(scope)
+    loaded = True
 
 
-def prepend_path(path, envvar='PATH'):
-  ''' Prepend *path* to the ``PATH`` environment variable. '''
+def prepend_path(path, envvar="PATH"):
+    """ Prepend *path* to the ``PATH`` environment variable. """
 
-  path = os.path.normpath(os.path.abspath(os.path.expanduser(path)))
-  os.environ[envvar] = path + os.pathsep + os.environ[envvar]
-  return os.environ[envvar]
+    path = os.path.normpath(os.path.abspath(os.path.expanduser(path)))
+    os.environ[envvar] = path + os.pathsep + os.environ[envvar]
+    return os.environ[envvar]

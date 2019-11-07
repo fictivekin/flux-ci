@@ -29,101 +29,112 @@ import os
 
 
 def get_argument_parser(prog=None):
-  parser = argparse.ArgumentParser(prog=prog)
-  parser.add_argument('--web', action='store_true', help='launch builtin webserver')
-  parser.add_argument('-c','--config-file', help='Flux CI config file to load')
-  return parser
+    parser = argparse.ArgumentParser(prog=prog)
+    parser.add_argument("--web", action="store_true", help="launch builtin webserver")
+    parser.add_argument("-c", "--config-file", help="Flux CI config file to load")
+    return parser
 
 
 def main(argv=None, prog=None):
-  parser = get_argument_parser(prog)
-  args = parser.parse_args(argv)
+    parser = get_argument_parser(prog)
+    args = parser.parse_args(argv)
 
-  if not args.web:
-    parser.print_usage()
-    return 0
+    if not args.web:
+        parser.print_usage()
+        return 0
 
-  # Add possible locations of flux config
-  sys.path.insert(0, '.')
-  if args.config_file and os.path.isfile(args.config_file):
-    sys.path.insert(0, os.path.dirname(args.config_file))
+    # Add possible locations of flux config
+    sys.path.insert(0, ".")
+    if args.config_file and os.path.isfile(args.config_file):
+        sys.path.insert(0, os.path.dirname(args.config_file))
 
-  # Load config as global
-  from flux import config
-  config.load(args.config_file)
+    # Load config as global
+    from flux import config
 
-  start_web()
+    config.load(args.config_file)
+
+    start_web()
 
 
 def check_requirements():
-  """
+    """
   Checks some system requirements. If they are not met, prints an error and
   exits the process. Currently, this only checks if the required Git version
   is met (>= 2.3).
   """
 
-  # Test if Git version is at least 2.3 (for GIT_SSH_COMMAND)
-  git_version = subprocess.check_output(['git', '--version']).decode().strip()
-  git_version = re.search('^git version (\d\.\d+)', git_version)
-  if git_version:
-    git_version = git_version.group(1)
-  if not git_version or int(git_version.split('.')[1]) < 3:
-    print('Error: {!r} installed but need at least 2.3'.format(git_version))
-    sys.exit(1)
+    # Test if Git version is at least 2.3 (for GIT_SSH_COMMAND)
+    git_version = subprocess.check_output(["git", "--version"]).decode().strip()
+    git_version = re.search("^git version (\d\.\d+)", git_version)
+    if git_version:
+        git_version = git_version.group(1)
+    if not git_version or int(git_version.split(".")[1]) < 3:
+        print("Error: {!r} installed but need at least 2.3".format(git_version))
+        sys.exit(1)
 
 
 def start_web():
-  check_requirements()
+    check_requirements()
 
-  import flux
-  from flux import app, config, utils
+    import flux
+    from flux import app, config, utils
 
-  app.jinja_env.globals['config'] = config
-  app.jinja_env.globals['flux'] = flux
-  app.secret_key = config.secret_key
-  app.config['DEBUG'] = config.debug
-  app.config['SERVER_NAME'] = config.server_name
-  print('DEBUG = {}'.format(config.debug))
-  print('SERVER_NAME = {}'.format(config.server_name))
+    app.jinja_env.globals["config"] = config
+    app.jinja_env.globals["flux"] = flux
+    app.secret_key = config.secret_key
+    app.config["DEBUG"] = config.debug
+    app.config["SERVER_NAME"] = config.server_name
+    print("DEBUG = {}".format(config.debug))
+    print("SERVER_NAME = {}".format(config.server_name))
 
-  from flux import views, build, models
-  from urllib.parse import urlparse
+    from flux import views, build, models
+    from urllib.parse import urlparse
 
-  # Ensure that some of the required directories exist.
-  for dirname in [config.root_dir, config.build_dir, config.override_dir, config.customs_dir]:
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
+    # Ensure that some of the required directories exist.
+    for dirname in [
+        config.root_dir,
+        config.build_dir,
+        config.override_dir,
+        config.customs_dir,
+    ]:
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
 
-  # Make sure the root user exists and has all privileges, and that
-  # the password is up to date.
-  with models.session():
-    models.User.create_or_update_root()
+    # Make sure the root user exists and has all privileges, and that
+    # the password is up to date.
+    with models.session():
+        models.User.create_or_update_root()
 
-  # Create a dispatcher for the sub-url under which the app is run.
-  url_prefix = urlparse(config.app_url).path
-  if url_prefix and url_prefix != '/':
-    import flask
-    from werkzeug.wsgi import DispatcherMiddleware
-    target_app = DispatcherMiddleware(flask.Flask('_dummy_app'), {
-      url_prefix: app,
-    })
-  else:
-    target_app = app
+    # Create a dispatcher for the sub-url under which the app is run.
+    url_prefix = urlparse(config.app_url).path
+    if url_prefix and url_prefix != "/":
+        import flask
+        from werkzeug.wsgi import DispatcherMiddleware
 
-  app.logger.info('Starting builder threads...')
-  build.run_consumers(num_threads=config.parallel_builds)
-  build.update_queue()
-  try:
-    from werkzeug.serving import run_simple
-    run_simple(config.host, config.port, target_app,
-      use_debugger=config.debug, use_reloader=False)
-  finally:
-    app.logger.info('Stopping builder threads...')
-    build.stop_consumers()
+        target_app = DispatcherMiddleware(flask.Flask("_dummy_app"), {url_prefix: app,})
+    else:
+        target_app = app
+
+    app.logger.info("Starting builder threads...")
+    build.run_consumers(num_threads=config.parallel_builds)
+    build.update_queue()
+    try:
+        from werkzeug.serving import run_simple
+
+        run_simple(
+            config.host,
+            config.port,
+            target_app,
+            use_debugger=config.debug,
+            use_reloader=False,
+        )
+    finally:
+        app.logger.info("Stopping builder threads...")
+        build.stop_consumers()
 
 
 _entry_point = lambda: sys.exit(main())
 
 
-if __name__ == '__main__':
-  _entry_point()
+if __name__ == "__main__":
+    _entry_point()
