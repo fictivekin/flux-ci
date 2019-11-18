@@ -75,9 +75,8 @@ def contentful(data, logger):
     owner = request.headers.get("X-Contentful-Owner")
     name = request.headers.get("X-Contentful-Repo")
     ref = "ref/heads/{}".format(request.headers.get("X-Contentful-Branch"))
-    commit = (
-        "0" * 32
-    )  # A dummy commit, since Contentful can't know which hash is current
+    # A dummy commit, since Contentful can't know which hash is current
+    commit = ("0" * 32)
     secret = request.headers.get("X-Contentful-Token")
     get_repo_secret = lambda r: r.secret
 
@@ -256,7 +255,7 @@ def process_hook(name, owner, ref, commit, secret, get_repo_secret, logger):
     if not commit:
         logger.error("invalid JSON: no commit SHA received")
         return 400
-    if len(commit) != 40:
+    if len(commit) != 40 and len(commit) != 32:
         logger.error("invalid JSON: commit SHA has invalid length")
         return 400
     if secret == None:

@@ -204,7 +204,7 @@ class Build(db.Entity):
     date_finished = orm.Optional(datetime.datetime)
 
     def before_update(self):
-        if self.commit_sha != "0000000000000000000000000000000000000000":
+        if not self.commit_sha.startswith("0" * 32):
             update_github_status(self)
 
     def __init__(self, **kwargs):
