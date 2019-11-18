@@ -204,7 +204,8 @@ class Build(db.Entity):
     date_finished = orm.Optional(datetime.datetime)
 
     def before_update(self):
-        update_github_status(self)
+        if self.commit_sha != "0000000000000000000000000000000000000000":
+            update_github_status(self)
 
     def __init__(self, **kwargs):
         # Backwards compatibility for when SQLAlchemy was used, Auto Increment
