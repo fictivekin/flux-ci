@@ -331,10 +331,10 @@ def do_build_(build, build_path, override_path, logger, logfile, terminate_event
     build_env = os.environ.copy()
     build_env.update(
         {
+            "BUILD_PATH": build_path,
             "BUILD_NUM": str(build.num),
-            "BRANCH": build.ref.replace("refs/heads/", "", 1).replace(
-                "refs/tags/", "", 1
-            ),
+            "BRANCH": build.ref.replace("refs/heads/", "", 1) \
+                .replace("refs/tags/", "", 1),
             "SHA1": build.commit_sha,
         }
     )
