@@ -274,6 +274,18 @@ def process_hook(name, owner, ref, commit, secret, get_repo_secret, logger):
         logger.info("Git ref {!r} not whitelisted. No build dispatched".format(ref))
         return 200
 
+    existing_build = Build.select(
+        lambda x: (x.status == Build.Status_Queued and
+                   x.commit_sha == commit and
+                   x.ref == ref and
+                   x.repo == repo)).first()
+
+    if existing_build:
+        # We found an existing queued build with the same details, so skip out without queuing another
+        logger.info("Queued build found for the same repo with the same ref and commit sha")
+        return 200
+
+
     build = Build(
         repo=repo,
         commit_sha=commit,
