@@ -31,7 +31,7 @@ from flux.models import (
 )
 from flux.utils import secure_filename
 from flask import request, session, redirect, url_for, render_template, Blueprint
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import json
 import os
@@ -283,7 +283,7 @@ def process_hook(name, owner, ref, commit, secret, get_repo_secret, logger):
                    x.ref == ref and
                    x.repo == repo)).first()
 
-    hung_build_limit = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=15)
+    hung_build_limit = datetime.now(timezone.utc) - timedelta(minutes=15)
     hung_build = Build.select(
         lambda x: (x.status == Build.Status_Building and
                    x.ref == ref and
