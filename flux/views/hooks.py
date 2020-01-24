@@ -274,17 +274,28 @@ def process_hook(name, owner, ref, commit, secret, get_repo_secret, logger):
         logger.info("Git ref {!r} not whitelisted. No build dispatched".format(ref))
         return 200
 
+    # Need to check for an existing queued build before terminating a hung build, so that
+    # a previously queued build does not immediately start after the hung build gets terminated
+    # and then we queue up another build uselessly.
     existing_build = Build.select(
         lambda x: (x.status == Build.Status_Queued and
                    x.commit_sha == commit and
                    x.ref == ref and
                    x.repo == repo)).first()
 
+    hung_build_limit = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=15)
+    hung_build = Build.select(
+        lambda x: (x.status == Build.Status_Building and
+                   x.ref == ref and
+                   x.date_started < hung_build_limit and
+                   x.repo == repo)).first()
+    if hung_build:
+        terminate_build(hung_build)
+
     if existing_build:
         # We found an existing queued build with the same details, so skip out without queuing another
         logger.info("Queued build found for the same repo with the same ref and commit sha")
         return 200
-
 
     build = Build(
         repo=repo,
