@@ -74,7 +74,7 @@ def bare(data, logger):
 def contentful(data, logger):
     owner = request.headers.get("X-Contentful-Owner")
     name = request.headers.get("X-Contentful-Repo")
-    ref = "ref/heads/{}".format(request.headers.get("X-Contentful-Branch"))
+    ref = request.headers.get("X-Contentful-Branch")
     # A dummy commit, since Contentful can't know which hash is current
     commit = ("0" * 32)
     secret = request.headers.get("X-Contentful-Token")
