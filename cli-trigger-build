@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+usage() {
+    echo "$0 -o org -r repo -b branch -s repo-secret [-c commit]"
+}
+
+ORG=
+REPO=
+BRANCH=
+COMMIT="00000000000000000000000000000000"
+SECRET_KEY="${REPO_SECRET_KEY}"
+
+while test -n "$1"
+do
+    case "${1}" in
+        -o) ORG="${2}"
+            shift 2
+            ;;
+
+        -r) REPO="${2}"
+            shift 2
+            ;;
+
+        -b) BRANCH="${2}"
+            shift 2
+            ;;
+
+        -s) SECRET_KEY="${2}"
+            shift 2
+            ;;
+
+        -c) COMMIT="${2}"
+            shift 2
+            ;;
+
+        *) usage
+           exit 1
+           ;;
+
+    esac
+done
+
+POST_DATA=$(cat -<<END-OF-TEXT
+{
+    "owner": "${ORG}",
+    "name": "${REPO}",
+    "ref": "${BRANCH}",
+    "commit": "${COMMIT}",
+    "secret": "${SECRET_KEY}"
+}
+END-OF-TEXT
+)
+
+curl \
+    -H "Content-Type: application/json" \
+    -d "${POST_DATA}" \
+    -X POST "https://flux-ci.sgvpn.net/hooks/bare"
